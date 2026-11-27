@@ -1,3 +1,4 @@
+import importlib
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
@@ -13,6 +14,7 @@ if config.config_file_name is not None:
 
 config.set_main_option("sqlalchemy.url", get_settings().database_url)
 
+importlib.import_module("app.models")
 target_metadata = Base.metadata
 
 
