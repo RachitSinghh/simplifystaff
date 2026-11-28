@@ -1,8 +1,13 @@
+import hashlib
 from datetime import UTC, datetime, timedelta
 
 import jwt
 
 from app.core.config import get_settings
+
+
+def hash_secret(value: str) -> str:
+    return hashlib.sha256(value.encode()).hexdigest()
 
 
 def create_access_token(employee_id: str) -> str:
