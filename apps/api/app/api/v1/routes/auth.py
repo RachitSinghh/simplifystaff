@@ -6,10 +6,18 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.core.deps import get_db
+from app.core.deps import SESSION_ENDED_MESSAGE, get_db
 from app.core.security import create_access_token, hash_secret
 from app.models import Employee, OtpCode, RefreshToken
-from app.schemas.auth import OtpRequestIn, OtpRequestOut, OtpVerifyIn, OtpVerifyOut
+from app.schemas.auth import (
+    LogoutIn,
+    OtpRequestIn,
+    OtpRequestOut,
+    OtpVerifyIn,
+    OtpVerifyOut,
+    RefreshIn,
+    RefreshOut,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -88,3 +96,27 @@ def verify_otp(payload: OtpVerifyIn, db: Session = Depends(get_db)) -> OtpVerify
         access_token=create_access_token(str(employee.id)),
         refresh_token=refresh_token_value,
     )
+
+
+@router.post("/refresh", response_model=RefreshOut)
+def refresh_access_token(payload: RefreshIn, db: Session = Depends(get_db)) -> RefreshOut:
+    token = db.scalars(
+        select(RefreshToken).where(RefreshToken.token_hash == hash_secret(payload.refresh_token))
+    ).first()
+
+    now = datetime.now(UTC)
+    if token is None or token.revoked_at is not None or token.expires_at < now:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, SESSION_ENDED_MESSAGE)
+
+    return RefreshOut(access_token=create_access_token(str(token.employee_id)))
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(payload: LogoutIn, db: Session = Depends(get_db)) -> None:
+    token = db.scalars(
+        select(RefreshToken).where(RefreshToken.token_hash == hash_secret(payload.refresh_token))
+    ).first()
+
+    if token is not None and token.revoked_at is None:
+        token.revoked_at = datetime.now(UTC)
+        db.commit()

@@ -1,12 +1,22 @@
 import uuid
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, UniqueConstraint, text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import (
+    DateTime,
+    Enum,
+    ForeignKey,
+    UniqueConstraint,
+    event,
+    inspect,
+    text,
+    update,
+)
+from sqlalchemy.orm import Mapped, Session, mapped_column
 from sqlalchemy.sql import func
 
 from app.db.base import Base
 from app.models.enums import EmployeeRole
+from app.models.refresh_token import RefreshToken
 
 
 class Employee(Base):
@@ -38,3 +48,17 @@ class Employee(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+@event.listens_for(Session, "before_flush")
+def _revoke_refresh_tokens_on_deactivation(session, flush_context, instances):
+    for obj in session.dirty:
+        if not isinstance(obj, Employee):
+            continue
+        history = inspect(obj).attrs.is_active.history
+        if history.has_changes() and obj.is_active is False:
+            session.execute(
+                update(RefreshToken)
+                .where(RefreshToken.employee_id == obj.id, RefreshToken.revoked_at.is_(None))
+                .values(revoked_at=datetime.now(UTC))
+            )
