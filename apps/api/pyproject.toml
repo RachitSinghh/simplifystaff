@@ -9,6 +9,7 @@ dependencies = [
   "sqlalchemy>=2.0",
   "alembic>=1.14",
   "psycopg[binary]>=3.2",
+  "pyjwt>=2.9",
 ]
 
 [dependency-groups]
@@ -23,3 +24,10 @@ package = false
 
 [tool.ruff]
 extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = [
+  "fastapi.Depends",
+  "fastapi.params.Depends",
+  "app.core.deps.require_role",
+]
