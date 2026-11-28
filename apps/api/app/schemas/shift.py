@@ -23,6 +23,11 @@ class ShiftUpdate(BaseModel):
     status: ShiftStatus | None = None
 
 
+class CopyLastWeekRequest(BaseModel):
+    location_id: uuid.UUID
+    week_start: date
+
+
 class ShiftOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -35,3 +40,4 @@ class ShiftOut(BaseModel):
     status: ShiftStatus
     created_by: uuid.UUID
     created_at: datetime
+    has_conflict: bool
