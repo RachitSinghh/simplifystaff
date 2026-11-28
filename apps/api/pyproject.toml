@@ -29,5 +29,7 @@ extend-exclude = ["alembic/versions"]
 extend-immutable-calls = [
   "fastapi.Depends",
   "fastapi.params.Depends",
+  "fastapi.Query",
+  "fastapi.params.Query",
   "app.core.deps.require_role",
 ]
